@@ -5,7 +5,7 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 
 :root {
-  --foreground-rgb: 30, 58, 138;
+  --foreground-rgb: 61, 52, 43;
   --background-rgb: 250, 248, 245;
 }
 
@@ -31,12 +31,12 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background-color: #93c5fd;
+  background-color: #c4b5a0;
   border-radius: 999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background-color: #60a5fa;
+  background-color: #a89276;
 }
 
 /* Smooth animations */
@@ -59,15 +59,15 @@ body {
 @keyframes pulse-ring {
   0% {
     transform: scale(0.95);
-    box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.7);
+    box-shadow: 0 0 0 0 rgba(139, 115, 85, 0.5);
   }
   70% {
     transform: scale(1);
-    box-shadow: 0 0 0 12px rgba(59, 130, 246, 0);
+    box-shadow: 0 0 0 12px rgba(139, 115, 85, 0);
   }
   100% {
     transform: scale(0.95);
-    box-shadow: 0 0 0 0 rgba(59, 130, 246, 0);
+    box-shadow: 0 0 0 0 rgba(139, 115, 85, 0);
   }
 }
 
