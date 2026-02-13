@@ -269,7 +269,7 @@ export default function ChatInterface() {
   }
 
   return (
-    <div className="flex flex-col h-full bg-cream">
+    <div className="flex flex-col min-h-0 flex-1 bg-cream">
       {/* Chat Header */}
       <div className="p-4 bg-white border-b border-greek-100 flex items-center justify-between">
         <div>
