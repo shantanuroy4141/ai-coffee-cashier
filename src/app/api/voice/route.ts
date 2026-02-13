@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-const ELEVEN_LABS_API_KEY = process.env.ELEVEN_LABS_API_KEY;
+const ELEVEN_LABS_API_KEY = (process.env.ELEVEN_LABS_API_KEY ?? "").trim();
 const VOICE_ID = process.env.ELEVEN_LABS_VOICE_ID || "21m00Tcm4TlvDq8ikWAM";
 
 export async function POST(request: NextRequest) {

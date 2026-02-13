@@ -4,10 +4,10 @@ import { SYSTEM_PROMPT } from "@/lib/systemPrompt";
 
 export async function POST(request: NextRequest) {
   try {
-    const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey || apiKey.trim() === "") {
+    const apiKey = (process.env.GEMINI_API_KEY ?? "").trim();
+    if (!apiKey) {
       return NextResponse.json(
-        { error: "GEMINI_API_KEY is not configured. Add it to .env.local" },
+        { error: "GEMINI_API_KEY is not configured. Add it to .env.local and restart the server." },
         { status: 500 }
       );
     }
@@ -30,7 +30,7 @@ export async function POST(request: NextRequest) {
     }));
 
     const response = await ai.models.generateContent({
-      model: "gemini-2.0-flash",
+      model: "gemini-1.5-flash",
       contents,
       config: {
         systemInstruction: SYSTEM_PROMPT,
@@ -42,8 +42,13 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ message: text });
   } catch (error: unknown) {
     console.error("Chat API error:", error);
-    const message =
-      error instanceof Error ? error.message : "Failed to process chat";
+    const err = error instanceof Error ? error : new Error(String(error));
+    let message = err.message;
+    if (message.includes("403") || message.includes("API key")) {
+      message = "Invalid or expired API key. Get a new one at aistudio.google.com/apikey";
+    } else if (message.includes("429") || message.includes("quota") || message.includes("RESOURCE_EXHAUSTED")) {
+      message = "API quota exceeded. Try again later or check aistudio.google.com usage.";
+    }
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
