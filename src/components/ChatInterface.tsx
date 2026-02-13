@@ -98,7 +98,7 @@ export default function ChatInterface() {
     return null;
   }
 
-  // Text-to-speech using Eleven Labs
+  // Text-to-speech: try Eleven Labs first, fallback to browser voice
   async function speakText(text: string) {
     if (!isVoiceMode) return;
     try {
@@ -126,12 +126,24 @@ export default function ChatInterface() {
         };
         await audio.play();
       } else {
-        setIsSpeaking(false);
+        // Fallback to browser's built-in speech (works without any API key)
+        fallbackSpeak(text);
       }
     } catch (err) {
       console.error("TTS error:", err);
-      setIsSpeaking(false);
+      fallbackSpeak(text);
     }
+  }
+
+  function fallbackSpeak(text: string) {
+    if (!("speechSynthesis" in window)) {
+      setIsSpeaking(false);
+      return;
+    }
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.onend = () => setIsSpeaking(false);
+    utterance.onerror = () => setIsSpeaking(false);
+    speechSynthesis.speak(utterance);
   }
 
   // Send message
@@ -164,9 +176,12 @@ export default function ChatInterface() {
         body: JSON.stringify({ messages: chatHistory }),
       });
 
-      if (!res.ok) throw new Error("Chat request failed");
-
       const data = await res.json();
+
+      if (!res.ok) {
+        const errMsg = data?.error || "Chat request failed";
+        throw new Error(errMsg);
+      }
       const { cleanText, orderData } = parseOrder(data.message);
 
       let order: Order | undefined;
@@ -191,11 +206,15 @@ export default function ChatInterface() {
       }
     } catch (err) {
       console.error("Chat error:", err);
+      const errMsg = err instanceof Error ? err.message : "";
+      const isQuota = errMsg.includes("429") || errMsg.includes("quota") || errMsg.includes("RESOURCE_EXHAUSTED");
+      const userMessage = isQuota
+        ? "You've hit the free API limit for today. Try again in a few minutes, or check your usage at aistudio.google.com."
+        : "The AI can't respond right now. Make sure you added GEMINI_API_KEY to .env.local (get one at aistudio.google.com/apikey), then restart the server.";
       const errorMessage: ChatMessage = {
         id: uuidv4(),
         role: "assistant",
-        content:
-          "Sorry, I'm having a bit of trouble right now. Could you try again?",
+        content: userMessage,
         timestamp: new Date().toISOString(),
       };
       setMessages((prev) => [...prev, errorMessage]);
