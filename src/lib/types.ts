@@ -1,4 +1,4 @@
-export type DrinkSize = "S" | "M" | "L";
+export type DrinkSize = "S" | "L";
 export type Temperature = "hot" | "iced";
 export type MilkType =
   | "whole"
@@ -14,9 +14,11 @@ export type IceLevel = "no ice" | "less ice" | "normal" | "extra ice";
 export interface MenuItem {
   id: string;
   name: string;
-  category: "espresso" | "cold" | "non-coffee" | "tea";
+  category: "coffee" | "tea" | "pastry";
   description: string;
-  prices: { S: number; M: number; L: number };
+  prices: { S: number; L: number };
+  /** True if item has no size (pastry) - use S price for display */
+  isPastry?: boolean;
   canBeHot: boolean;
   canBeCold: boolean;
   hasMilk: boolean;

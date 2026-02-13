@@ -339,11 +339,7 @@ export default function Dashboard() {
                         style={{ backgroundColor: COLORS[i] }}
                       />
                       <span className="text-xs text-greek-600">
-                        {s.size === "S"
-                          ? "Small"
-                          : s.size === "M"
-                            ? "Medium"
-                            : "Large"}{" "}
+                        {s.size === "S" ? "Small" : "Large"}{" "}
                         ({s.count})
                       </span>
                     </div>

@@ -1,7 +1,7 @@
 "use client";
 
 import { Order, OrderStatus } from "@/lib/types";
-import { formatPrice } from "@/lib/menu";
+import { formatPrice, getMenuItem } from "@/lib/menu";
 
 interface OrderTicketProps {
   order: Order;
@@ -73,12 +73,16 @@ export default function OrderTicket({
             <div className="flex justify-between items-start">
               <div>
                 <p className="font-semibold text-sm text-greek-900">
-                  {item.size} {item.name}
+                  {getMenuItem(item.menuItemId)?.isPastry
+                    ? item.name
+                    : `${item.size} ${item.name}`}
                 </p>
                 <div className="flex flex-wrap gap-1 mt-1">
-                  <span className="text-[11px] px-1.5 py-0.5 rounded-md bg-greek-100 text-greek-600">
-                    {item.temperature}
-                  </span>
+                  {!getMenuItem(item.menuItemId)?.isPastry && (
+                    <span className="text-[11px] px-1.5 py-0.5 rounded-md bg-greek-100 text-greek-600">
+                      {item.temperature}
+                    </span>
+                  )}
                   {item.milk !== "whole" && item.milk !== "none" && (
                     <span className="text-[11px] px-1.5 py-0.5 rounded-md bg-greek-100 text-greek-600">
                       {item.milk} milk

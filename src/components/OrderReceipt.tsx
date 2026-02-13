@@ -1,7 +1,7 @@
 "use client";
 
 import { Order } from "@/lib/types";
-import { formatPrice } from "@/lib/menu";
+import { formatPrice, getMenuItem } from "@/lib/menu";
 
 interface OrderReceiptProps {
   order: Order;
@@ -42,16 +42,16 @@ export default function OrderReceipt({ order }: OrderReceiptProps) {
                     {item.name}
                   </p>
                   <div className="flex flex-wrap gap-1 mt-1">
-                    <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-greek-50 text-greek-600">
-                      {item.size === "S"
-                        ? "Small"
-                        : item.size === "M"
-                          ? "Medium"
-                          : "Large"}
-                    </span>
-                    <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-greek-50 text-greek-600">
-                      {item.temperature}
-                    </span>
+                    {!getMenuItem(item.menuItemId)?.isPastry && (
+                      <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-greek-50 text-greek-600">
+                        {item.size === "S" ? "Small" : "Large"}
+                      </span>
+                    )}
+                    {!getMenuItem(item.menuItemId)?.isPastry && (
+                      <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-greek-50 text-greek-600">
+                        {item.temperature}
+                      </span>
+                    )}
                     {item.milk !== "whole" && item.milk !== "none" && (
                       <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-greek-50 text-greek-600">
                         {item.milk} milk

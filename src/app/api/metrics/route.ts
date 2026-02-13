@@ -86,7 +86,7 @@ function computeMetrics(orders: Order[]): DashboardMetrics {
     .sort((a, b) => b.count - a.count);
 
   // Size distribution
-  const sizeCounts: Record<string, number> = { S: 0, M: 0, L: 0 };
+  const sizeCounts: Record<string, number> = { S: 0, L: 0 };
   for (const order of orders) {
     for (const item of order.items) {
       if (sizeCounts[item.size] !== undefined) {
