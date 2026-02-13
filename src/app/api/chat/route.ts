@@ -1,10 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import Anthropic from "@anthropic-ai/sdk";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 import { SYSTEM_PROMPT } from "@/lib/systemPrompt";
 
-const anthropic = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY,
-});
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
 
 export async function POST(request: NextRequest) {
   try {
@@ -17,24 +15,25 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const anthropicMessages = messages.map(
+    const model = genAI.getGenerativeModel({
+      model: "gemini-2.0-flash",
+      systemInstruction: SYSTEM_PROMPT,
+    });
+
+    // Convert messages to Gemini chat history format
+    // Gemini expects alternating user/model roles
+    const history = messages.slice(0, -1).map(
       (msg: { role: string; content: string }) => ({
-        role: msg.role as "user" | "assistant",
-        content: msg.content,
+        role: msg.role === "assistant" ? "model" : "user",
+        parts: [{ text: msg.content }],
       })
     );
 
-    const response = await anthropic.messages.create({
-      model: "claude-sonnet-4-20250514",
-      max_tokens: 1024,
-      system: SYSTEM_PROMPT,
-      messages: anthropicMessages,
-    });
+    const lastMessage = messages[messages.length - 1];
 
-    const textContent = response.content.find(
-      (block) => block.type === "text"
-    );
-    const text = textContent && textContent.type === "text" ? textContent.text : "";
+    const chat = model.startChat({ history });
+    const result = await chat.sendMessage(lastMessage.content);
+    const text = result.response.text();
 
     return NextResponse.json({ message: text });
   } catch (error: unknown) {
