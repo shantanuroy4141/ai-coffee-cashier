@@ -463,6 +463,14 @@ export default function ChatInterface() {
               type="text"
               value={input}
               onChange={(e) => setInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  if (input.trim() && !isLoading) {
+                    sendMessage(input);
+                  }
+                }
+              }}
               placeholder="Type your order..."
               disabled={isLoading}
               className="flex-1 px-4 py-3 rounded-2xl border border-greek-200 focus:outline-none focus:ring-2 focus:ring-greek-400 focus:border-transparent text-sm bg-greek-50/50 placeholder-greek-400 disabled:opacity-50"
