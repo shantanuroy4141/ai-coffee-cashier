@@ -364,14 +364,14 @@ export default function ChatInterface() {
                 </span>
               </div>
               <div className="flex gap-1.5">
-                <span className="w-2 h-2 bg-greek-300 rounded-full animate-bounce" />
+                <span className="w-2 h-2 bg-greek-300 rounded-full animate-bounce" style={{ width: 8, height: 8, minWidth: 8, minHeight: 8 }} />
                 <span
                   className="w-2 h-2 bg-greek-300 rounded-full animate-bounce"
-                  style={{ animationDelay: "0.15s" }}
+                  style={{ width: 8, height: 8, minWidth: 8, minHeight: 8, animationDelay: "0.15s" }}
                 />
                 <span
                   className="w-2 h-2 bg-greek-300 rounded-full animate-bounce"
-                  style={{ animationDelay: "0.3s" }}
+                  style={{ width: 8, height: 8, minWidth: 8, minHeight: 8, animationDelay: "0.3s" }}
                 />
               </div>
             </div>
@@ -421,7 +421,9 @@ export default function ChatInterface() {
             >
               {isListening ? (
                 <svg
-                  className="w-7 h-7"
+                  width={28}
+                  height={28}
+                  className="w-7 h-7 shrink-0"
                   fill="currentColor"
                   viewBox="0 0 24 24"
                 >
@@ -429,7 +431,9 @@ export default function ChatInterface() {
                 </svg>
               ) : (
                 <svg
-                  className="w-7 h-7"
+                  width={28}
+                  height={28}
+                  className="w-7 h-7 shrink-0"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -469,7 +473,9 @@ export default function ChatInterface() {
               className="px-5 py-3 bg-greek-500 text-white rounded-2xl font-medium text-sm hover:bg-greek-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
             >
               <svg
-                className="w-5 h-5"
+                width={20}
+                height={20}
+                className="w-5 h-5 shrink-0"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"

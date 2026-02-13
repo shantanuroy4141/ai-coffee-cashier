@@ -4,6 +4,12 @@
 
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 
+/* Fallback: ensure links and layout work even if Tailwind is delayed */
+a {
+  text-decoration: none;
+  color: inherit;
+}
+
 :root {
   --foreground-rgb: 61, 52, 43;
   --background-rgb: 250, 248, 245;
