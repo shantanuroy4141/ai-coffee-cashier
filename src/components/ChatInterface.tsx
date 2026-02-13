@@ -52,6 +52,24 @@ export default function ChatInterface() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const recognitionRef = useRef<SpeechRecognitionInstance | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const audioUnlockedRef = useRef(false);
+
+  // Unlock audio on user gesture - required for TTS to work in modern browsers
+  function unlockAudio() {
+    if (audioUnlockedRef.current) return;
+    try {
+      const ctx = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
+      if (ctx.state === "suspended") ctx.resume();
+      const buf = ctx.createBuffer(1, 1, 22050);
+      const src = ctx.createBufferSource();
+      src.buffer = buf;
+      src.connect(ctx.destination);
+      src.start(0);
+      audioUnlockedRef.current = true;
+    } catch {
+      audioUnlockedRef.current = true;
+    }
+  }
 
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -101,8 +119,8 @@ export default function ChatInterface() {
   // Text-to-speech: try Eleven Labs first, fallback to browser voice
   async function speakText(text: string) {
     if (!isVoiceMode) return;
+    setIsSpeaking(true);
     try {
-      setIsSpeaking(true);
       const res = await fetch("/api/voice", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -126,7 +144,6 @@ export default function ChatInterface() {
         };
         await audio.play();
       } else {
-        // Fallback to browser's built-in speech (works without any API key)
         fallbackSpeak(text);
       }
     } catch (err) {
@@ -140,7 +157,9 @@ export default function ChatInterface() {
       setIsSpeaking(false);
       return;
     }
+    speechSynthesis.cancel();
     const utterance = new SpeechSynthesisUtterance(text);
+    utterance.rate = 0.9;
     utterance.onend = () => setIsSpeaking(false);
     utterance.onerror = () => setIsSpeaking(false);
     speechSynthesis.speak(utterance);
@@ -207,10 +226,10 @@ export default function ChatInterface() {
     } catch (err) {
       console.error("Chat error:", err);
       const errMsg = err instanceof Error ? err.message : "";
-      const isQuota = errMsg.includes("429") || errMsg.includes("quota") || errMsg.includes("RESOURCE_EXHAUSTED");
-      const userMessage = isQuota
-        ? "You've hit the free API limit for today. Try again in a few minutes, or check your usage at aistudio.google.com."
-        : "The AI can't respond right now. Make sure you added GEMINI_API_KEY to .env.local (get one at aistudio.google.com/apikey), then restart the server.";
+      const isAuth = errMsg.includes("403") || errMsg.includes("API key") || errMsg.includes("API key not configured");
+      const userMessage = isAuth
+        ? "Invalid or expired API key. Get a new one at aistudio.google.com/apikey and add it to .env.local, then restart the server."
+        : errMsg || "The AI can't respond right now. Check the console for details.";
       const errorMessage: ChatMessage = {
         id: uuidv4(),
         role: "assistant",
@@ -225,10 +244,11 @@ export default function ChatInterface() {
 
   // Voice recognition
   function startListening() {
+    unlockAudio();
     const SpeechRecognition =
       window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SpeechRecognition) {
-      alert("Speech recognition is not supported in your browser.");
+      alert("Speech recognition is not supported in this browser. Use Chrome or Edge for voice input.");
       return;
     }
 
@@ -245,6 +265,11 @@ export default function ChatInterface() {
     recognition.onerror = (event: { error: string }) => {
       console.error("Speech recognition error:", event.error);
       setIsListening(false);
+      if (event.error === "not-allowed") {
+        alert("Microphone access was denied. Please allow microphone access and try again.");
+      } else if (event.error === "no-speech") {
+        // User might have tapped without speaking - don't alert, just stop
+      }
     };
 
     recognition.onend = () => {
@@ -286,6 +311,7 @@ export default function ChatInterface() {
           </span>
           <button
             onClick={() => {
+              unlockAudio();
               setIsVoiceMode(!isVoiceMode);
               if (isListening) stopListening();
               if (audioRef.current) {

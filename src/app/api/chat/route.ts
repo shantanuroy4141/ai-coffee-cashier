@@ -30,7 +30,7 @@ export async function POST(request: NextRequest) {
     }));
 
     const response = await ai.models.generateContent({
-      model: "gemini-1.5-flash",
+      model: "gemini-2.0-flash",
       contents,
       config: {
         systemInstruction: SYSTEM_PROMPT,
@@ -46,9 +46,10 @@ export async function POST(request: NextRequest) {
     let message = err.message;
     if (message.includes("403") || message.includes("API key")) {
       message = "Invalid or expired API key. Get a new one at aistudio.google.com/apikey";
-    } else if (message.includes("429") || message.includes("quota") || message.includes("RESOURCE_EXHAUSTED")) {
-      message = "API quota exceeded. Try again later or check aistudio.google.com usage.";
+    } else if (message.includes("429")) {
+      message = "Rate limit hit. Try again in a minute.";
     }
+    // Otherwise pass through the actual error so you can see what's really wrong
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
