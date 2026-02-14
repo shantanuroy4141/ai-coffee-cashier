@@ -46,10 +46,9 @@ class OrderStore {
   }
 }
 
-// Singleton instance
+// Singleton instance — persist on globalThis so warm serverless invocations share the same store.
+// Note: On Vercel, multiple instances = separate stores. For production scale, use a database (Vercel KV, Supabase, etc.).
 const globalForStore = globalThis as unknown as { orderStore: OrderStore };
 export const orderStore =
   globalForStore.orderStore || new OrderStore();
-if (process.env.NODE_ENV !== "production") {
-  globalForStore.orderStore = orderStore;
-}
+globalForStore.orderStore = orderStore;

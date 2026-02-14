@@ -15,8 +15,11 @@ export async function POST(request: NextRequest) {
     }
 
     if (!ELEVEN_LABS_API_KEY) {
+      const hint = process.env.VERCEL
+        ? "Set ELEVEN_LABS_API_KEY in your Vercel project's Environment Variables."
+        : "Add ELEVEN_LABS_API_KEY to .env.local and restart the server.";
       return NextResponse.json(
-        { error: "Eleven Labs API key not configured" },
+        { error: `Eleven Labs API key not configured. ${hint}` },
         { status: 500 }
       );
     }

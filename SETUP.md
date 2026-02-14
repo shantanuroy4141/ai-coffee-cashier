@@ -2,9 +2,9 @@
 
 ## Quick start
 
-1. Double-click **START-SERVER.command**
-2. Wait until you see "Ready"
-3. Open **http://localhost:3001** in your browser
+**Option A (dev):** Run `npm run dev` → open **http://localhost:3000**
+
+**Option B (production build):** Double-click **START-SERVER.command** → open **http://localhost:3001**
 
 ## If chat shows "having trouble" or errors
 
@@ -56,3 +56,9 @@ ELEVEN_LABS_API_KEY=your_elevenlabs_key_here
    - `ELEVEN_LABS_VOICE_ID` — defaults to a built-in voice if not set
 
 Without these set in production, the chat will fail with "API key not configured" and voice will fall back to browser TTS (or fail if ElevenLabs is required).
+
+**Important:** After adding variables, you must **Redeploy** — Vercel only injects env vars at build time.
+
+## Vercel limitation: orders
+
+Orders are stored in memory. On Vercel's serverless platform, each request can hit a different instance, so orders may not persist between customer/barista requests. For a real production deployment, add a database (Vercel KV, Supabase, etc.).
