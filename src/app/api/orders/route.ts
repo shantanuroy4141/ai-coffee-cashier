@@ -1,17 +1,26 @@
 import { NextRequest, NextResponse } from "next/server";
 import { orderStore } from "@/lib/store";
 import { Order, OrderItem } from "@/lib/types";
-import { getMenuItem } from "@/lib/menu";
+import { getMenuItem, menuItems } from "@/lib/menu";
 import { v4 as uuidv4 } from "uuid";
+
+function normalizeMenuItemId(id: string): string {
+  if (getMenuItem(id)) return id;
+  const match = menuItems
+    .filter((m) => id.startsWith(m.id))
+    .sort((a, b) => b.id.length - a.id.length)[0];
+  return match?.id ?? id;
+}
 
 function validateOrderItems(items: OrderItem[]): string | null {
   for (const item of items) {
+    item.menuItemId = normalizeMenuItemId(item.menuItemId);
     const menuItem = getMenuItem(item.menuItemId);
     if (!menuItem) return `Unknown item: ${item.menuItemId}`;
     if (menuItem.isPastry) continue;
     const milk = (item.milk ?? "whole").toLowerCase();
     if (!menuItem.hasMilk && milk !== "none") {
-      return `${menuItem.name} cannot have milk. If you'd like milk, suggest a Latte or similar drink instead.`;
+      return `${menuItem.name} can't have milk—suggest a Latte instead.`;
     }
   }
   return null;

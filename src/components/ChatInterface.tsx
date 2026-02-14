@@ -93,14 +93,16 @@ export default function ChatInterface() {
     prevLoadingRef.current = isLoading;
   }, [isLoading, isVoiceMode]);
 
-  // Parse order from assistant message
+  // Parse order from assistant message (handles markdown-wrapped JSON from some models)
   function parseOrder(text: string): { cleanText: string; orderData: Record<string, unknown> | null } {
     const orderMatch = text.match(
       /\|\|\|ORDER_START\|\|\|([\s\S]*?)\|\|\|ORDER_END\|\|\|/
     );
     if (orderMatch) {
       try {
-        const orderData = JSON.parse(orderMatch[1]);
+        let raw = orderMatch[1].trim();
+        raw = raw.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "").trim();
+        const orderData = JSON.parse(raw);
         const cleanText = text
           .replace(/\|\|\|ORDER_START\|\|\|[\s\S]*?\|\|\|ORDER_END\|\|\|/, "")
           .trim();
@@ -175,15 +177,6 @@ export default function ChatInterface() {
       console.error("TTS error:", err);
       fallbackSpeak(text);
     }
-  }
-
-  function stopSpeaking() {
-    if (audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current = null;
-    }
-    if ("speechSynthesis" in window) speechSynthesis.cancel();
-    setIsSpeaking(false);
   }
 
   function fallbackSpeak(text: string) {
@@ -500,18 +493,12 @@ export default function ChatInterface() {
               </div>
             )}
             <button
-              onClick={() => {
-                if (isListening) stopListening();
-                else if (isSpeaking) {
-                  stopSpeaking();
-                  startListening();
-                } else startListening();
-              }}
-              disabled={isLoading}
+              onClick={isListening ? stopListening : startListening}
+              disabled={isLoading || isSpeaking}
               className={`w-16 h-16 rounded-full flex items-center justify-center transition-all ${
                 isListening
                   ? "bg-red-500 text-white shadow-lg shadow-red-200 scale-110"
-                  : isLoading
+                  : isLoading || isSpeaking
                     ? "bg-santorini-200 text-santorini-400 cursor-not-allowed"
                     : "bg-santorini-500 text-white shadow-lg shadow-santorini-200 hover:bg-santorini-600 hover:scale-105"
               }`}
@@ -550,7 +537,7 @@ export default function ChatInterface() {
                 : isLoading
                   ? "Processing..."
                   : isSpeaking
-                    ? "Tap to interrupt and speak"
+                    ? "Playing response..."
                     : "Tap to speak your order"}
             </p>
             {voiceFeedback && (
