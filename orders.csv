@@ -1,0 +1,14 @@
+order_id,order_status,customer_name,created_at,updated_at,order_total,menu_item_id,item_name,size,temperature,milk,sweetness,ice,add_ons,extra_shots,special_instructions,item_price
+ord-a1b2c3,completed,Alex Chen,2025-02-14T09:15:00.000Z,2025-02-14T09:22:00.000Z,9.50,americano,Americano,L,hot,none,normal,normal,,0,,4.00
+ord-a1b2c3,completed,Alex Chen,2025-02-14T09:15:00.000Z,2025-02-14T09:22:00.000Z,9.50,latte,Latte,S,hot,whole,normal,normal,,0,,4.00
+ord-a1b2c3,completed,Alex Chen,2025-02-14T09:15:00.000Z,2025-02-14T09:22:00.000Z,9.50,plain-croissant,Plain Croissant,S,hot,none,normal,normal,,0,,3.50
+ord-d4e5f6,pending,Jordan Smith,2025-02-14T10:30:00.000Z,2025-02-14T10:30:00.000Z,7.25,mocha,Mocha,L,iced,oat,less,normal,"oat-milk,caramel-syrup",0,,5.75
+ord-d4e5f6,pending,Jordan Smith,2025-02-14T10:30:00.000Z,2025-02-14T10:30:00.000Z,7.25,chocolate-chip-cookie,Chocolate Chip Cookie,S,hot,none,normal,normal,,0,,2.50
+ord-g7h8i9,in_progress,Sam Rivera,2025-02-14T11:05:00.000Z,2025-02-14T11:08:00.000Z,14.00,cold-brew,Cold Brew,L,iced,none,normal,less ice,,0,,5.00
+ord-g7h8i9,in_progress,Sam Rivera,2025-02-14T11:05:00.000Z,2025-02-14T11:08:00.000Z,14.00,latte,Latte,L,hot,almond,normal,normal,"almond-milk,extra-espresso",1,extra hot,7.25
+ord-g7h8i9,in_progress,Sam Rivera,2025-02-14T11:05:00.000Z,2025-02-14T11:08:00.000Z,14.00,banana-bread,Banana Bread (Slice),S,hot,none,normal,normal,,0,,3.00
+ord-j0k1l2,completed,Guest,2025-02-14T08:45:00.000Z,2025-02-14T08:50:00.000Z,5.50,coffee-frappuccino,Coffee Frappuccino,S,iced,whole,extra,extra ice,,0,,5.50
+ord-m3n4o5,completed,Casey Lee,2025-02-14T09:55:00.000Z,2025-02-14T10:02:00.000Z,11.25,matcha-latte,Matcha Latte,L,hot,oat,normal,normal,"oat-milk,extra-matcha",1,,6.75
+ord-m3n4o5,completed,Casey Lee,2025-02-14T09:55:00.000Z,2025-02-14T10:02:00.000Z,11.25,chocolate-croissant,Chocolate Croissant,S,hot,none,normal,normal,,0,,4.00
+ord-p6q7r8,pending,Riley Taylor,2025-02-14T11:20:00.000Z,2025-02-14T11:20:00.000Z,6.75,black-tea,Black Tea,L,iced,none,less,normal,,0,,3.75
+ord-p6q7r8,pending,Riley Taylor,2025-02-14T11:20:00.000Z,2025-02-14T11:20:00.000Z,6.75,jasmine-tea,Jasmine Tea,S,hot,none,normal,normal,,0,,3.00
