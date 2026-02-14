@@ -34,8 +34,8 @@ On the home page, click Barista or Owner to enter a code. Access is stored for t
 ## Your .env.local should look like:
 
 ```
-GEMINI_API_KEY=AIzaSyAvek6Xhy-ub1-l05OzZ1sZ7BiJwStTWhA
-ELEVEN_LABS_API_KEY=sk_c1098aaf4a8e71c2101795c0523f12a66f1cbadbe0a42c6d
+GEMINI_API_KEY=your_gemini_key_here
+ELEVEN_LABS_API_KEY=your_elevenlabs_key_here
 ```
 
 (Use your real keys. **Never commit .env.local** — it's in .gitignore. Copy from .env.example if needed.)
