@@ -215,21 +215,16 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {!hasData ? (
-        <div className="bg-white rounded-2xl border border-greek-100 p-12 text-center">
-          <div className="text-4xl mb-4">&#9749;</div>
-          <h3 className="font-display text-lg font-bold text-greek-700 mb-2">
-            No orders yet today
-          </h3>
+      {!hasData && (
+        <div className="bg-white rounded-2xl border border-greek-100 p-8 text-center">
           <p className="text-sm text-greek-500">
-            Orders placed in the Customer view will appear here. Head to the
-            Customer tab to place some orders!
+            No orders yet. Orders placed in the Customer view will appear here.
           </p>
         </div>
-      ) : (
-        <>
-          {/* Key Metrics */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      )}
+
+      {/* Key Metrics - always visible */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <MetricCard
               title="Total Orders"
               value={metrics.totalOrders.toString()}
@@ -310,10 +305,10 @@ export default function Dashboard() {
                 </svg>
               }
             />
-          </div>
+      </div>
 
-          {/* Charts Row 1 */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      {/* Charts Row 1 */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Orders by Hour */}
             <div className="bg-white rounded-2xl border border-greek-100 p-5 shadow-sm">
               <h3 className="font-semibold text-greek-800 mb-4">
@@ -385,10 +380,10 @@ export default function Dashboard() {
                 </BarChart>
               </ResponsiveContainer>
             </div>
-          </div>
+      </div>
 
-          {/* Charts Row 2 */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      {/* Charts Row 2 */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {/* Size Distribution */}
             <div className="bg-white rounded-2xl border border-greek-100 p-5 shadow-sm">
               <h3 className="font-semibold text-greek-800 mb-4">
@@ -407,10 +402,10 @@ export default function Dashboard() {
                   >
                     {metrics.sizeDistribution
                       .filter((s) => s.count > 0)
-                      .map((_, index) => (
+                      .map((s, i) => (
                         <Cell
-                          key={`cell-${index}`}
-                          fill={COLORS[index % COLORS.length]}
+                          key={`cell-${s.size}`}
+                          fill={COLORS[i % COLORS.length]}
                         />
                       ))}
                   </Pie>
@@ -418,20 +413,18 @@ export default function Dashboard() {
                 </PieChart>
               </ResponsiveContainer>
               <div className="flex justify-center gap-4 mt-2">
-                {metrics.sizeDistribution
-                  .filter((s) => s.count > 0)
-                  .map((s, i) => (
+                {metrics.sizeDistribution.map((s, i) => (
                     <div key={s.size} className="flex items-center gap-1.5">
                       <span
                         className="w-3 h-3 rounded-full"
-                        style={{ backgroundColor: COLORS[i] }}
+                        style={{ backgroundColor: COLORS[i % COLORS.length] }}
                       />
                       <span className="text-xs text-greek-600">
                         {s.size === "S" ? "Small" : "Large"}{" "}
                         ({s.count})
                       </span>
                     </div>
-                  ))}
+                ))}
               </div>
             </div>
 
@@ -537,9 +530,7 @@ export default function Dashboard() {
                 ))}
               </div>
             </div>
-          </div>
-        </>
-      )}
+      </div>
     </div>
   );
 }
