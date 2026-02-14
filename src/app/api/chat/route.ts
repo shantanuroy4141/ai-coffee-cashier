@@ -15,7 +15,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { messages } = await request.json();
+    let body: { messages?: unknown };
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json(
+        { error: "Invalid JSON body" },
+        { status: 400 }
+      );
+    }
+    const { messages } = body ?? {};
 
     if (!messages || !Array.isArray(messages)) {
       return NextResponse.json(
@@ -27,10 +36,20 @@ export async function POST(request: NextRequest) {
     const ai = new GoogleGenAI({ apiKey });
 
     // Convert messages to Gemini format: array of { role, parts }
-    const contents = messages.map((msg: { role: string; content: string }) => ({
-      role: msg.role === "assistant" ? "model" : "user",
-      parts: [{ text: msg.content }],
-    }));
+    // Filter empty messages; Gemini expects role + parts
+    const contents = messages
+      .filter((msg: { role?: string; content?: string }) => msg?.content?.trim())
+      .map((msg: { role: string; content: string }) => ({
+        role: msg.role === "assistant" ? "model" : "user",
+        parts: [{ text: String(msg.content).trim() }],
+      }));
+
+    if (contents.length === 0) {
+      return NextResponse.json(
+        { error: "No valid messages to send" },
+        { status: 400 }
+      );
+    }
 
     const response = await ai.models.generateContent({
       model: "gemini-2.0-flash",
@@ -41,6 +60,13 @@ export async function POST(request: NextRequest) {
     });
 
     const text = response.text ?? "";
+    // Handle blocked/empty responses
+    if (!text.trim()) {
+      return NextResponse.json(
+        { error: "No response from the model. The content may have been filtered." },
+        { status: 500 }
+      );
+    }
 
     return NextResponse.json({ message: text });
   } catch (error: unknown) {

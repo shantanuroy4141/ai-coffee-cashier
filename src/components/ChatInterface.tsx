@@ -242,7 +242,8 @@ export default function ChatInterface() {
         const errMsg = data?.error || "Chat request failed";
         throw new Error(errMsg);
       }
-      const { cleanText, orderData } = parseOrder(data.message);
+      const rawMessage = data?.message ?? "";
+      const { cleanText, orderData } = parseOrder(typeof rawMessage === "string" ? rawMessage : "");
 
       let order: Order | undefined;
       let orderError: string | undefined;
@@ -252,10 +253,13 @@ export default function ChatInterface() {
         else if (error) orderError = error;
       }
 
+      const displayContent =
+        orderError ? `${cleanText}\n\n⚠️ ${orderError}`.trim()
+        : cleanText.trim() || "I didn't catch that. Could you try again?";
       const assistantMessage: ChatMessage = {
         id: uuidv4(),
         role: "assistant",
-        content: orderError ? `${cleanText}\n\n⚠️ ${orderError}` : cleanText,
+        content: displayContent,
         timestamp: new Date().toISOString(),
         order,
       };
@@ -270,8 +274,8 @@ export default function ChatInterface() {
         const orderComplete = !!order;
         if (orderError) {
           speakText(`Sorry, ${orderError}`, !orderComplete);
-        } else if (cleanText) {
-          speakText(cleanText, !orderComplete);
+        } else if (displayContent) {
+          speakText(displayContent, !orderComplete);
         } else if (!orderComplete) {
           maybeResumeListening();
         }
