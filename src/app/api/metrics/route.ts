@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { orderStore } from "@/lib/store";
+
+export const dynamic = "force-dynamic";
 import { menuItems } from "@/lib/menu";
 import { DashboardMetrics, Order } from "@/lib/types";
 

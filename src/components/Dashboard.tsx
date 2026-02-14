@@ -63,10 +63,15 @@ function MetricCard({
 export default function Dashboard() {
   const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
-  const fetchMetrics = useCallback(async () => {
+  const fetchMetrics = useCallback(async (isManualRefresh = false) => {
+    if (isManualRefresh) setRefreshing(true);
     try {
-      const res = await fetch("/api/metrics");
+      const res = await fetch(`/api/metrics?t=${Date.now()}`, {
+        cache: "no-store",
+        headers: { "Cache-Control": "no-cache", Pragma: "no-cache" },
+      });
       if (res.ok) {
         const data = await res.json();
         setMetrics(data.metrics);
@@ -75,12 +80,13 @@ export default function Dashboard() {
       console.error("Failed to fetch metrics:", err);
     } finally {
       setLoading(false);
+      if (isManualRefresh) setRefreshing(false);
     }
   }, []);
 
   useEffect(() => {
-    fetchMetrics();
-    const interval = setInterval(fetchMetrics, 10000);
+    fetchMetrics(false);
+    const interval = setInterval(() => fetchMetrics(false), 10000);
     return () => clearInterval(interval);
   }, [fetchMetrics]);
 
@@ -207,10 +213,11 @@ export default function Dashboard() {
             Export CSV
           </button>
           <button
-            onClick={fetchMetrics}
-            className="px-4 py-2 bg-greek-50 text-greek-600 rounded-xl text-sm font-medium hover:bg-greek-100 transition-colors border border-greek-200"
+            onClick={() => fetchMetrics(true)}
+            disabled={refreshing}
+            className="px-4 py-2 bg-greek-50 text-greek-600 rounded-xl text-sm font-medium hover:bg-greek-100 transition-colors border border-greek-200 disabled:opacity-60 disabled:cursor-not-allowed"
           >
-            Refresh
+            {refreshing ? "Refreshing…" : "Refresh"}
           </button>
         </div>
       </div>

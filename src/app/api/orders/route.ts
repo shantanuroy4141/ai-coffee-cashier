@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { orderStore } from "@/lib/store";
+
+export const dynamic = "force-dynamic";
 import { Order, OrderItem } from "@/lib/types";
 import { getMenuItem, menuItems } from "@/lib/menu";
 import { v4 as uuidv4 } from "uuid";
