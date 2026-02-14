@@ -19,6 +19,13 @@ The AI needs a **Gemini API key**. Make sure:
 4. **Stop the server** (close the terminal or Ctrl+C)
 5. **Double-click START-SERVER.command** again to restart
 
+## Staff access codes
+
+- **Barista** (Customer + Barista tabs): `1234`
+- **Owner** (all 3 tabs): `9999`
+
+On the home page, click Barista or Owner to enter a code. Access is stored for the session.
+
 ## Voice mode
 
 - **Speaking your order**: Uses your browser's microphone (Chrome works best)

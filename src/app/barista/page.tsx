@@ -3,9 +3,29 @@
 import { useState, useEffect, useCallback } from "react";
 import Navigation from "@/components/Navigation";
 import OrderTicket from "@/components/OrderTicket";
+import StaffCodePrompt from "@/components/StaffCodePrompt";
+import { useStaffAuth } from "@/lib/staffAuth";
 import { Order, OrderStatus } from "@/lib/types";
 
 export default function BaristaPage() {
+  const { hasBaristaAccess } = useStaffAuth();
+
+  if (!hasBaristaAccess) {
+    return (
+      <div className="min-h-screen bg-cream flex flex-col items-center justify-center p-8">
+        <div className="bg-white rounded-3xl shadow-lg p-8 max-w-sm w-full text-center">
+          <div className="text-4xl mb-4">&#9749;</div>
+          <h2 className="font-display text-xl font-bold text-greek-800 mb-2">
+            Barista Access
+          </h2>
+          <p className="text-sm text-greek-600 mb-6">
+            Enter your barista code to view the order queue
+          </p>
+          <StaffCodePrompt target="barista" compact />
+        </div>
+      </div>
+    );
+  }
   const [orders, setOrders] = useState<Order[]>([]);
   const [filter, setFilter] = useState<"all" | OrderStatus>("all");
   const [loading, setLoading] = useState(true);

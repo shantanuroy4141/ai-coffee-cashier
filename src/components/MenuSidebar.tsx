@@ -11,26 +11,26 @@ export default function MenuSidebar() {
       ? menuItems
       : menuItems.filter((item) => item.category === activeCategory);
 
+  const drinks = filteredItems.filter((item) => !item.isPastry);
+  const pastries = filteredItems.filter((item) => item.isPastry);
+
   return (
-    <div className="w-80 flex-shrink-0 bg-white border-r border-greek-100 flex flex-col h-full overflow-hidden">
+    <div className="w-80 flex-shrink-0 bg-white border-r border-santorini-100 flex flex-col h-full overflow-hidden">
       {/* Header */}
-      <div className="px-4 py-3 border-b border-greek-100">
-        <h2 className="font-display text-lg font-bold text-greek-800">
+      <div className="px-4 py-3 border-b border-santorini-100 bg-gradient-to-r from-santorini-50/80 to-white">
+        <h2 className="font-display text-lg font-bold text-santorini-800">
           Our Menu
         </h2>
-        <p className="text-xs text-greek-500 mt-0.5">
-          Sizes: S (12oz) · L (16oz)
-        </p>
       </div>
 
       {/* Category Filter */}
-      <div className="px-3 py-2.5 border-b border-greek-100 flex gap-1.5 flex-wrap">
+      <div className="px-3 py-2.5 border-b border-santorini-100 flex gap-1.5 flex-wrap">
         <button
           onClick={() => setActiveCategory("all")}
           className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${
             activeCategory === "all"
-              ? "bg-greek-500 text-white"
-              : "bg-greek-50 text-greek-600 hover:bg-greek-100"
+              ? "bg-santorini-500 text-white"
+              : "bg-santorini-50 text-santorini-700 hover:bg-santorini-100"
           }`}
         >
           All
@@ -41,8 +41,8 @@ export default function MenuSidebar() {
             onClick={() => setActiveCategory(cat.id)}
             className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${
               activeCategory === cat.id
-                ? "bg-greek-500 text-white"
-                : "bg-greek-50 text-greek-600 hover:bg-greek-100"
+                ? "bg-santorini-500 text-white"
+                : "bg-santorini-50 text-santorini-700 hover:bg-santorini-100"
             }`}
           >
             {cat.label}
@@ -50,110 +50,108 @@ export default function MenuSidebar() {
         ))}
       </div>
 
-      {/* Menu Table */}
+      {/* Main Menu - Drinks & Pastries (scrollable, prioritized) */}
       <div className="flex-1 min-h-0 overflow-y-auto">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="bg-greek-50/80 text-greek-600 uppercase tracking-wider text-[10px] font-semibold">
-              <th className="text-left py-2.5 px-3 font-semibold">Item</th>
-              <th className="text-right py-2.5 px-3 font-semibold w-20">S</th>
-              <th className="text-right py-2.5 px-3 font-semibold w-20 pr-3">L</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredItems
-              .filter((item) => !item.isPastry)
-              .map((item, idx) => (
+        {drinks.length > 0 && (
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="bg-santorini-50/80 text-santorini-700 uppercase tracking-wider text-[10px] font-semibold">
+                <th className="text-left py-2 px-3 font-semibold">Drink</th>
+                <th className="text-right py-2 px-2 font-semibold w-16">12oz</th>
+                <th className="text-right py-2 px-3 font-semibold w-16">16oz</th>
+              </tr>
+            </thead>
+            <tbody>
+              {drinks.map((item) => (
                 <tr
                   key={item.id}
-                  className={`border-b border-greek-100/60 transition-colors hover:bg-greek-50/40 ${
-                    idx % 2 === 1 ? "bg-greek-50/20" : "bg-white"
-                  }`}
+                  className="border-b border-santorini-100/60 transition-colors hover:bg-santorini-50/40"
                 >
-                  <td className="py-2.5 px-3 align-top">
+                  <td className="py-2 px-3 align-top">
                     <div>
-                      <span className="font-medium text-greek-900">{item.name}</span>
-                      <p className="text-xs text-greek-500 mt-0.5 leading-relaxed">
+                      <span className="font-semibold text-santorini-900 block">
+                        {item.name}
+                      </span>
+                      <span className="text-[11px] text-santorini-600/80 line-clamp-1">
                         {item.description}
-                      </p>
+                      </span>
                       {(item.canBeHot || item.canBeCold || !item.caffeinated) && (
-                        <span className="text-[10px] text-greek-400 mt-1 inline-block">
-                          {[item.canBeHot && "Hot", item.canBeCold && "Iced", !item.caffeinated && "Decaf"]
+                        <span className="text-[10px] text-santorini-500/70 mt-0.5 inline-block">
+                          {[item.canBeHot && "hot", item.canBeCold && "iced", !item.caffeinated && "decaf"]
                             .filter(Boolean)
                             .join(" · ")}
                         </span>
                       )}
                     </div>
                   </td>
-                  <td className="py-2.5 px-2 text-right text-greek-700 tabular-nums align-top">
+                  <td className="py-2 px-2 text-right text-santorini-800 tabular-nums align-top font-medium">
                     {formatPrice(item.prices.S)}
                   </td>
-                  <td className="py-2.5 px-2 pr-3 text-right text-greek-700 tabular-nums align-top">
+                  <td className="py-2 px-2 pr-3 text-right text-santorini-800 tabular-nums align-top font-medium">
                     {formatPrice(item.prices.L)}
                   </td>
                 </tr>
               ))}
-          </tbody>
-        </table>
-        {filteredItems.some((item) => item.isPastry) && (
-          <>
-            <div className="px-3 py-2 bg-greek-50/80 mt-2">
-              <h3 className="font-semibold text-[10px] text-greek-600 uppercase tracking-wider">
+            </tbody>
+          </table>
+        )}
+        {pastries.length > 0 && (
+          <div className="mt-4">
+            <div className="px-3 py-1.5">
+              <h3 className="font-semibold text-[10px] text-santorini-600 uppercase tracking-wider">
                 Pastry
               </h3>
             </div>
             <table className="w-full text-sm">
               <thead>
-                <tr className="bg-greek-50/80 text-greek-600 uppercase tracking-wider text-[10px] font-semibold">
-                  <th className="text-left py-2.5 px-3 font-semibold">Item</th>
-                  <th className="text-right py-2.5 px-3 font-semibold w-20 pr-3">Price</th>
+                <tr className="bg-santorini-50/80 text-santorini-700 uppercase tracking-wider text-[10px] font-semibold">
+                  <th className="text-left py-2 px-3 font-semibold">Item</th>
+                  <th className="text-right py-2 px-3 font-semibold w-16">Price</th>
                 </tr>
               </thead>
               <tbody>
-                {filteredItems
-                  .filter((item) => item.isPastry)
-                  .map((item, idx) => (
-                    <tr
-                      key={item.id}
-                      className={`border-b border-greek-100/60 ${
-                        idx % 2 === 1 ? "bg-greek-50/20" : "bg-white"
-                      }`}
-                    >
-                      <td className="py-2.5 px-3">
-                        <span className="font-medium text-greek-900">{item.name}</span>
-                        <p className="text-xs text-greek-500 mt-0.5">{item.description}</p>
-                      </td>
-                      <td className="py-2.5 px-3 text-right text-greek-700 tabular-nums">
-                        {formatPrice(item.prices.S)}
-                      </td>
-                    </tr>
-                  ))}
+                {pastries.map((item) => (
+                  <tr
+                    key={item.id}
+                    className="border-b border-santorini-100/60 hover:bg-santorini-50/40"
+                  >
+                    <td className="py-2 px-3">
+                      <span className="font-semibold text-santorini-900 block">
+                        {item.name}
+                      </span>
+                      <span className="text-[11px] text-santorini-600/80">
+                        {item.description}
+                      </span>
+                    </td>
+                    <td className="py-2 px-3 text-right text-santorini-800 tabular-nums font-medium">
+                      {formatPrice(item.prices.S)}
+                    </td>
+                  </tr>
+                ))}
               </tbody>
             </table>
-          </>
+          </div>
         )}
       </div>
 
-      {/* Add-ons Table */}
-      <div className="border-t border-greek-100">
-        <div className="px-3 py-2 bg-greek-50/80">
-          <h3 className="font-semibold text-[10px] text-greek-600 uppercase tracking-wider">
+      {/* Add-ons - Compact table, options left, prices right */}
+      <div className="flex-shrink-0 border-t border-santorini-100 bg-santorini-50/50">
+        <div className="px-3 py-1.5">
+          <h3 className="font-semibold text-[10px] text-santorini-600 uppercase tracking-wider">
             Add-ons
           </h3>
         </div>
-        <table className="w-full text-sm">
+        <table className="w-full text-[11px]">
           <tbody>
-            {addOns.map((addon, idx) => (
+            {addOns.map((addon) => (
               <tr
                 key={addon.id}
-                className={`border-b border-greek-100/60 last:border-b-0 ${
-                  idx % 2 === 1 ? "bg-greek-50/20" : "bg-white"
-                }`}
+                className="border-b border-santorini-100/50 last:border-b-0 hover:bg-santorini-50/60"
               >
-                <td className="py-2 px-3 text-greek-700 font-medium">
+                <td className="py-1.5 px-3 text-santorini-800 font-medium">
                   {addon.name}
                 </td>
-                <td className="py-2 px-3 text-right text-greek-600 tabular-nums">
+                <td className="py-1.5 px-3 text-right text-santorini-700 tabular-nums">
                   {addon.price === 0 ? "no charge" : `+${formatPrice(addon.price)}`}
                 </td>
               </tr>
