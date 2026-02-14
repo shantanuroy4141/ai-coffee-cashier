@@ -2,11 +2,12 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useStaffAuth } from "@/lib/staffAuth";
 
 const navItems = [
-  { href: "/customer", label: "Customer", icon: "chat" },
-  { href: "/barista", label: "Barista", icon: "queue" },
-  { href: "/owner", label: "Dashboard", icon: "chart" },
+  { href: "/customer", label: "Customer", icon: "chat" as const, requires: "customer" as const },
+  { href: "/barista", label: "Barista", icon: "queue" as const, requires: "barista" as const },
+  { href: "/owner", label: "Dashboard", icon: "chart" as const, requires: "owner" as const },
 ];
 
 function NavIcon({ type }: { type: string }) {
@@ -37,20 +38,28 @@ function NavIcon({ type }: { type: string }) {
 
 export default function Navigation() {
   const pathname = usePathname();
+  const { hasBaristaAccess, hasOwnerAccess } = useStaffAuth();
+
+  const visibleItems = navItems.filter((item) => {
+    if (item.requires === "customer") return true;
+    if (item.requires === "barista") return hasBaristaAccess;
+    if (item.requires === "owner") return hasOwnerAccess;
+    return false;
+  });
 
   return (
-    <nav className="bg-white border-b border-greek-200 shadow-sm">
+    <nav className="bg-white border-b border-santorini-200 shadow-sm">
       <div className="max-w-7xl mx-auto px-4">
         <div className="flex items-center justify-between h-16">
           <Link href="/" className="flex items-center gap-2">
             <span className="text-2xl">&#9749;</span>
-            <span className="font-display text-xl font-bold text-greek-800">
+            <span className="font-display text-xl font-bold text-santorini-800">
               Aegean Brew
             </span>
           </Link>
 
           <div className="flex items-center gap-1">
-            {navItems.map((item) => {
+            {visibleItems.map((item) => {
               const isActive = pathname === item.href;
               return (
                 <Link
@@ -58,8 +67,8 @@ export default function Navigation() {
                   href={item.href}
                   className={`flex items-center gap-2 px-4 py-2 rounded-2xl text-sm font-medium transition-all ${
                     isActive
-                      ? "bg-greek-500 text-white shadow-md"
-                      : "text-greek-700 hover:bg-greek-50"
+                      ? "bg-santorini-500 text-white shadow-md"
+                      : "text-santorini-700 hover:bg-santorini-50"
                   }`}
                 >
                   <NavIcon type={item.icon} />

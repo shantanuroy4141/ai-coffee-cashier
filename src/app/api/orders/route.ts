@@ -15,6 +15,7 @@ function normalizeMenuItemId(id: string): string {
 function validateOrderItems(items: OrderItem[]): string | null {
   for (const item of items) {
     item.menuItemId = normalizeMenuItemId(item.menuItemId);
+    if (!Array.isArray(item.addOns)) item.addOns = [];
     const menuItem = getMenuItem(item.menuItemId);
     if (!menuItem) return `Unknown item: ${item.menuItemId}`;
     if (menuItem.isPastry) continue;

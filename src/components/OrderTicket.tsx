@@ -104,9 +104,9 @@ export default function OrderTicket({
                     </span>
                   )}
                 </div>
-                {item.addOns.length > 0 && (
+                {(item.addOns ?? []).length > 0 && (
                   <p className="text-[11px] text-greek-500 mt-1">
-                    + {item.addOns.join(", ")}
+                    + {(item.addOns ?? []).join(", ")}
                   </p>
                 )}
                 {item.specialInstructions && (

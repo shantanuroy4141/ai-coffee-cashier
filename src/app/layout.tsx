@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { StaffAuthProvider } from "@/lib/staffAuth";
 
 export const metadata: Metadata = {
   title: "Aegean Brew - AI Coffee Cashier",
@@ -13,7 +14,9 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className="antialiased">{children}</body>
+      <body className="antialiased">
+        <StaffAuthProvider>{children}</StaffAuthProvider>
+      </body>
     </html>
   );
 }

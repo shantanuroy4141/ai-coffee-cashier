@@ -46,7 +46,6 @@ export default function ChatInterface() {
   ]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [isVoiceMode, setIsVoiceMode] = useState(false);
   const [isListening, setIsListening] = useState(false);
   const [voiceFeedback, setVoiceFeedback] = useState<string | null>(null);
   const [isSpeaking, setIsSpeaking] = useState(false);
@@ -56,8 +55,8 @@ export default function ChatInterface() {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const audioUnlockedRef = useRef(false);
   const transcriptRef = useRef("");
-  const isVoiceModeRef = useRef(isVoiceMode);
-  isVoiceModeRef.current = isVoiceMode;
+  const messagesRef = useRef(messages);
+  messagesRef.current = messages;
 
   // Unlock audio on user gesture - required for TTS to work in modern browsers
   function unlockAudio() {
@@ -87,11 +86,11 @@ export default function ChatInterface() {
   // Refocus input when loading completes so user can keep typing without clicking
   const prevLoadingRef = useRef(isLoading);
   useEffect(() => {
-    if (prevLoadingRef.current && !isLoading && !isVoiceMode) {
+    if (prevLoadingRef.current && !isLoading) {
       inputRef.current?.focus();
     }
     prevLoadingRef.current = isLoading;
-  }, [isLoading, isVoiceMode]);
+  }, [isLoading]);
 
   // Parse order from assistant message (handles markdown-wrapped JSON from some models)
   function parseOrder(text: string): { cleanText: string; orderData: Record<string, unknown> | null } {
@@ -131,16 +130,14 @@ export default function ChatInterface() {
     }
   }
 
-  // Resume listening after barista finishes speaking (voice mode only)
+  // Resume listening after barista finishes speaking (when using voice input)
   function maybeResumeListening() {
-    if (isVoiceModeRef.current && !isLoading) {
-      setTimeout(() => startListening(), 300);
-    }
+    if (!isLoading) setTimeout(() => startListening(), 300);
   }
 
   // Text-to-speech: try Eleven Labs first, fallback to browser voice
-  async function speakText(text: string) {
-    if (!isVoiceMode) return;
+  // resumeAfter: if true, start listening again when done (false when order confirmed)
+  async function speakText(text: string, resumeAfter = true) {
     setIsSpeaking(true);
     try {
       const res = await fetch("/api/voice", {
@@ -159,30 +156,39 @@ export default function ChatInterface() {
         audio.onended = () => {
           setIsSpeaking(false);
           URL.revokeObjectURL(url);
-          maybeResumeListening();
+          if (resumeAfter) maybeResumeListening();
         };
         audio.onerror = () => {
           setIsSpeaking(false);
           URL.revokeObjectURL(url);
-          maybeResumeListening();
+          if (resumeAfter) maybeResumeListening();
         };
         await audio.play();
       } else {
         const errData = await res.json().catch(() => ({}));
         const errMsg = errData?.error || `ElevenLabs error ${res.status}`;
         console.warn("ElevenLabs TTS failed, using browser voice:", errMsg);
-        fallbackSpeak(text);
+        fallbackSpeak(text, resumeAfter);
       }
     } catch (err) {
       console.error("TTS error:", err);
-      fallbackSpeak(text);
+      fallbackSpeak(text, resumeAfter);
     }
   }
 
-  function fallbackSpeak(text: string) {
+  function stopSpeaking() {
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current = null;
+    }
+    if ("speechSynthesis" in window) speechSynthesis.cancel();
+    setIsSpeaking(false);
+  }
+
+  function fallbackSpeak(text: string, resumeAfter = true) {
     if (!("speechSynthesis" in window)) {
       setIsSpeaking(false);
-      maybeResumeListening();
+      if (resumeAfter) maybeResumeListening();
       return;
     }
     speechSynthesis.cancel();
@@ -190,17 +196,17 @@ export default function ChatInterface() {
     utterance.rate = 0.9;
     utterance.onend = () => {
       setIsSpeaking(false);
-      maybeResumeListening();
+      if (resumeAfter) maybeResumeListening();
     };
     utterance.onerror = () => {
       setIsSpeaking(false);
-      maybeResumeListening();
+      if (resumeAfter) maybeResumeListening();
     };
     speechSynthesis.speak(utterance);
   }
 
-  // Send message
-  async function sendMessage(text: string) {
+  // Send message (uses messagesRef so voice callbacks get latest history)
+  async function sendMessage(text: string, fromVoice = false) {
     if (!text.trim() || isLoading) return;
 
     const userMessage: ChatMessage = {
@@ -210,7 +216,8 @@ export default function ChatInterface() {
       timestamp: new Date().toISOString(),
     };
 
-    const updatedMessages = [...messages, userMessage];
+    const latestMessages = messagesRef.current;
+    const updatedMessages = [...latestMessages, userMessage];
     setMessages(updatedMessages);
     setInput("");
     setIsLoading(true);
@@ -255,13 +262,17 @@ export default function ChatInterface() {
 
       setMessages((prev) => [...prev, assistantMessage]);
 
-      // Speak the response if in voice mode
-      if (isVoiceMode) {
+      // When order is confirmed, stop listening (order flow is complete)
+      if (order) stopListening();
+
+      // Speak the response only when message came from voice
+      if (fromVoice) {
+        const orderComplete = !!order;
         if (orderError) {
-          speakText(`Sorry, ${orderError}`);
+          speakText(`Sorry, ${orderError}`, !orderComplete);
         } else if (cleanText) {
-          speakText(cleanText);
-        } else {
+          speakText(cleanText, !orderComplete);
+        } else if (!orderComplete) {
           maybeResumeListening();
         }
       }
@@ -325,7 +336,7 @@ export default function ChatInterface() {
       const transcript = transcriptRef.current.trim();
       console.log("[Voice] Recognition ended, transcript:", transcript || "(empty)");
       if (transcript) {
-        sendMessage(transcript);
+        sendMessage(transcript, true);
         setVoiceFeedback(null);
       } else {
         setVoiceFeedback("No speech detected. Check your microphone and try again.");
@@ -362,31 +373,6 @@ export default function ChatInterface() {
           <p className="text-xs text-santorini-600">
             Chat or speak to place your order
           </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <span className="text-xs text-santorini-600">
-            {isVoiceMode ? "Voice" : "Text"}
-          </span>
-          <button
-            onClick={() => {
-              unlockAudio();
-              setIsVoiceMode(!isVoiceMode);
-              if (isListening) stopListening();
-              if (audioRef.current) {
-                audioRef.current.pause();
-                setIsSpeaking(false);
-              }
-            }}
-            className={`relative w-12 h-6 rounded-full transition-colors ${
-              isVoiceMode ? "bg-santorini-500" : "bg-santorini-200"
-            }`}
-          >
-            <span
-              className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${
-                isVoiceMode ? "translate-x-6" : "translate-x-0.5"
-              }`}
-            />
-          </button>
         </div>
       </div>
 
@@ -466,112 +452,67 @@ export default function ChatInterface() {
 
       {/* Input Area */}
       <div className="p-4 bg-white border-t border-santorini-100">
-        {isVoiceMode ? (
-          <div className="flex flex-col items-center gap-3">
-            {isSpeaking && (
-              <div className="flex items-center gap-2 text-xs text-santorini-600">
-                <div className="flex gap-0.5">
-                  <span className="w-1 h-3 bg-santorini-400 rounded-full animate-pulse" />
-                  <span
-                    className="w-1 h-4 bg-santorini-500 rounded-full animate-pulse"
-                    style={{ animationDelay: "0.1s" }}
-                  />
-                  <span
-                    className="w-1 h-3 bg-santorini-400 rounded-full animate-pulse"
-                    style={{ animationDelay: "0.2s" }}
-                  />
-                  <span
-                    className="w-1 h-5 bg-santorini-500 rounded-full animate-pulse"
-                    style={{ animationDelay: "0.3s" }}
-                  />
-                  <span
-                    className="w-1 h-3 bg-santorini-400 rounded-full animate-pulse"
-                    style={{ animationDelay: "0.4s" }}
-                  />
-                </div>
-                Speaking...
-              </div>
-            )}
+        {isSpeaking && (
+          <div className="flex items-center gap-3 text-xs text-santorini-600 mb-3">
+            <div className="flex gap-0.5">
+              <span className="w-1 h-3 bg-santorini-400 rounded-full animate-pulse" />
+              <span
+                className="w-1 h-4 bg-santorini-500 rounded-full animate-pulse"
+                style={{ animationDelay: "0.1s" }}
+              />
+              <span
+                className="w-1 h-3 bg-santorini-400 rounded-full animate-pulse"
+                style={{ animationDelay: "0.2s" }}
+              />
+              <span
+                className="w-1 h-5 bg-santorini-500 rounded-full animate-pulse"
+                style={{ animationDelay: "0.3s" }}
+              />
+              <span
+                className="w-1 h-3 bg-santorini-400 rounded-full animate-pulse"
+                style={{ animationDelay: "0.4s" }}
+              />
+            </div>
+            <span>Speaking...</span>
             <button
-              onClick={isListening ? stopListening : startListening}
-              disabled={isLoading || isSpeaking}
-              className={`w-16 h-16 rounded-full flex items-center justify-center transition-all ${
-                isListening
-                  ? "bg-red-500 text-white shadow-lg shadow-red-200 scale-110"
-                  : isLoading || isSpeaking
-                    ? "bg-santorini-200 text-santorini-400 cursor-not-allowed"
-                    : "bg-santorini-500 text-white shadow-lg shadow-santorini-200 hover:bg-santorini-600 hover:scale-105"
-              }`}
-            >
-              {isListening ? (
-                <svg
-                  width={28}
-                  height={28}
-                  className="w-7 h-7 shrink-0"
-                  fill="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <rect x="6" y="6" width="12" height="12" rx="2" />
-                </svg>
-              ) : (
-                <svg
-                  width={28}
-                  height={28}
-                  className="w-7 h-7 shrink-0"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"
-                  />
-                </svg>
-              )}
-            </button>
-            <p className="text-xs text-santorini-600">
-              {isListening
-                ? "Listening... tap to stop"
-                : isLoading
-                  ? "Processing..."
-                  : isSpeaking
-                    ? "Playing response..."
-                    : "Tap to speak your order"}
-            </p>
-            {voiceFeedback && (
-              <p className="text-xs text-amber-600 animate-pulse">{voiceFeedback}</p>
-            )}
-          </div>
-        ) : (
-          <form onSubmit={handleSubmit} className="flex gap-2">
-            <input
-              ref={inputRef}
-              type="text"
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.shiftKey) {
-                  e.preventDefault();
-                  if (input.trim() && !isLoading) {
-                    sendMessage(input);
-                  }
-                }
+              onClick={() => {
+                stopSpeaking();
+                maybeResumeListening();
               }}
-              placeholder="Type your order..."
-              disabled={isLoading}
-              className="flex-1 px-4 py-3 rounded-2xl border border-santorini-200 focus:outline-none focus:ring-2 focus:ring-santorini-400 focus:border-transparent text-sm bg-santorini-50/50 placeholder-santorini-400 disabled:opacity-50"
-            />
-            <button
-              type="submit"
-              disabled={!input.trim() || isLoading}
-              className="px-5 py-3 bg-santorini-500 text-white rounded-2xl font-medium text-sm hover:bg-santorini-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
+              className="px-3 py-1 rounded-full bg-red-100 text-red-600 font-medium hover:bg-red-200 transition-colors"
             >
+              Stop
+            </button>
+          </div>
+        )}
+        {(voiceFeedback || isListening) && (
+          <p className="text-xs text-santorini-600 mb-2">
+            {isListening ? "Listening... tap mic to stop" : voiceFeedback}
+          </p>
+        )}
+        <form onSubmit={handleSubmit} className="flex gap-2">
+          <button
+            type="button"
+            onClick={() => {
+              unlockAudio();
+              if (isListening) stopListening();
+              else startListening();
+            }}
+            disabled={isLoading}
+            className={`shrink-0 w-12 h-12 rounded-2xl flex items-center justify-center transition-all ${
+              isListening
+                ? "bg-red-500 text-white"
+                : "bg-santorini-100 text-santorini-600 hover:bg-santorini-200"
+            }`}
+          >
+            {isListening ? (
+              <svg width={20} height={20} fill="currentColor" viewBox="0 0 24 24">
+                <rect x="6" y="6" width="12" height="12" rx="2" />
+              </svg>
+            ) : (
               <svg
                 width={20}
                 height={20}
-                className="w-5 h-5 shrink-0"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -580,12 +521,48 @@ export default function ChatInterface() {
                   strokeLinecap="round"
                   strokeLinejoin="round"
                   strokeWidth={2}
-                  d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"
+                  d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"
                 />
               </svg>
-            </button>
-          </form>
-        )}
+            )}
+          </button>
+          <input
+            ref={inputRef}
+            type="text"
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                if (input.trim() && !isLoading) sendMessage(input);
+              }
+            }}
+            placeholder={isListening ? "Speak your order..." : "Type or tap mic to speak"}
+            disabled={isLoading}
+            className="flex-1 px-4 py-3 rounded-2xl border border-santorini-200 focus:outline-none focus:ring-2 focus:ring-santorini-400 focus:border-transparent text-sm bg-santorini-50/50 placeholder-santorini-400 disabled:opacity-50"
+          />
+          <button
+            type="submit"
+            disabled={!input.trim() || isLoading}
+            className="px-5 py-3 bg-santorini-500 text-white rounded-2xl font-medium text-sm hover:bg-santorini-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-sm shrink-0"
+          >
+            <svg
+              width={20}
+              height={20}
+              className="w-5 h-5 shrink-0"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"
+              />
+            </svg>
+          </button>
+        </form>
       </div>
     </div>
   );
