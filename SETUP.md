@@ -34,8 +34,25 @@ On the home page, click Barista or Owner to enter a code. Access is stored for t
 ## Your .env.local should look like:
 
 ```
-GEMINI_API_KEY=AIzaSy...
-ELEVEN_LABS_API_KEY=sk_...
+GEMINI_API_KEY=AIzaSyAvek6Xhy-ub1-l05OzZ1sZ7BiJwStTWhA
+ELEVEN_LABS_API_KEY=sk_c1098aaf4a8e71c2101795c0523f12a66f1cbadbe0a42c6d
 ```
 
 (Use your real keys. **Never commit .env.local** — it's in .gitignore. Copy from .env.example if needed.)
+
+## Production deployment
+
+`.env.local` is only used for local development (it's gitignored and not deployed). For production:
+
+1. **Set environment variables** in your hosting platform:
+   - **Vercel:** Project → Settings → Environment Variables
+   - **Railway / Render / Netlify:** Project → Variables
+
+2. **Required variables:**
+   - `GEMINI_API_KEY` — for AI chat (get from [Google AI Studio](https://aistudio.google.com/apikey))
+   - `ELEVEN_LABS_API_KEY` — for AI voice (get from [ElevenLabs](https://elevenlabs.io)); omit if you're fine with browser TTS only
+
+3. **Optional:**
+   - `ELEVEN_LABS_VOICE_ID` — defaults to a built-in voice if not set
+
+Without these set in production, the chat will fail with "API key not configured" and voice will fall back to browser TTS (or fail if ElevenLabs is required).
