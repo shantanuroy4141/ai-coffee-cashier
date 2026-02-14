@@ -21,33 +21,36 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const response = await fetch(
-      `https://api.elevenlabs.io/v1/text-to-speech/${VOICE_ID}`,
-      {
-        method: "POST",
-        headers: {
-          "xi-api-key": ELEVEN_LABS_API_KEY,
-          "Content-Type": "application/json",
-          Accept: "audio/mpeg",
+    const url = `https://api.elevenlabs.io/v1/text-to-speech/${VOICE_ID}?output_format=mp3_22050_32`;
+    const response = await fetch(url, {
+      method: "POST",
+      headers: {
+        "xi-api-key": ELEVEN_LABS_API_KEY,
+        "Content-Type": "application/json",
+        Accept: "audio/mpeg",
+      },
+      body: JSON.stringify({
+        text,
+        model_id: "eleven_multilingual_v2",
+        voice_settings: {
+          stability: 0.5,
+          similarity_boost: 0.75,
         },
-        body: JSON.stringify({
-          text,
-          model_id: "eleven_monolingual_v1",
-          voice_settings: {
-            stability: 0.5,
-            similarity_boost: 0.75,
-            style: 0.0,
-            use_speaker_boost: true,
-          },
-        }),
-      }
-    );
+      }),
+    });
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error("Eleven Labs API error:", errorText);
+      console.error("Eleven Labs API error:", response.status, errorText);
+      let errDetail = "Failed to synthesize speech";
+      try {
+        const errJson = JSON.parse(errorText);
+        errDetail = errJson.detail?.message || errJson.message || errorText.slice(0, 200);
+      } catch {
+        errDetail = errorText.slice(0, 200) || errDetail;
+      }
       return NextResponse.json(
-        { error: "Failed to synthesize speech" },
+        { error: errDetail },
         { status: response.status }
       );
     }

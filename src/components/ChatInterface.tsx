@@ -23,7 +23,7 @@ interface SpeechRecognitionInstance {
   start: () => void;
   stop: () => void;
   onresult: ((event: SpeechRecognitionEvent) => void) | null;
-  onerror: ((event: { error: string }) => void) | null;
+  onerror: ((event: { error?: string }) => void) | null;
   onend: (() => void) | null;
 }
 
@@ -50,9 +50,12 @@ export default function ChatInterface() {
   const [isListening, setIsListening] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
   const recognitionRef = useRef<SpeechRecognitionInstance | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const audioUnlockedRef = useRef(false);
+  const transcriptRef = useRef("");
+  const resultIndexRef = useRef(0);
 
   // Unlock audio on user gesture - required for TTS to work in modern browsers
   function unlockAudio() {
@@ -78,6 +81,15 @@ export default function ChatInterface() {
   useEffect(() => {
     scrollToBottom();
   }, [messages, scrollToBottom]);
+
+  // Refocus input when loading completes so user can keep typing without clicking
+  const prevLoadingRef = useRef(isLoading);
+  useEffect(() => {
+    if (prevLoadingRef.current && !isLoading && !isVoiceMode) {
+      inputRef.current?.focus();
+    }
+    prevLoadingRef.current = isLoading;
+  }, [isLoading, isVoiceMode]);
 
   // Parse order from assistant message
   function parseOrder(text: string): { cleanText: string; orderData: Record<string, unknown> | null } {
@@ -144,6 +156,9 @@ export default function ChatInterface() {
         };
         await audio.play();
       } else {
+        const errData = await res.json().catch(() => ({}));
+        const errMsg = errData?.error || `ElevenLabs error ${res.status}`;
+        console.warn("ElevenLabs TTS failed, using browser voice:", errMsg);
         fallbackSpeak(text);
       }
     } catch (err) {
@@ -242,7 +257,7 @@ export default function ChatInterface() {
     }
   }
 
-  // Voice recognition
+  // Voice recognition - continuous mode so it doesn't stop after 1-2s of silence
   function startListening() {
     unlockAudio();
     const SpeechRecognition =
@@ -252,28 +267,38 @@ export default function ChatInterface() {
       return;
     }
 
+    transcriptRef.current = "";
+    resultIndexRef.current = 0;
+
     const recognition = new SpeechRecognition();
-    recognition.continuous = false;
-    recognition.interimResults = false;
+    recognition.continuous = true;
+    recognition.interimResults = true;
     recognition.lang = "en-US";
 
     recognition.onresult = (event: SpeechRecognitionEvent) => {
-      const transcript = event.results[0][0].transcript;
-      sendMessage(transcript);
+      for (let i = resultIndexRef.current; i < event.results.length; i++) {
+        const transcript = event.results[i]?.[0]?.transcript ?? "";
+        if (transcript) transcriptRef.current += transcript;
+        resultIndexRef.current = i + 1;
+      }
     };
 
-    recognition.onerror = (event: { error: string }) => {
-      console.error("Speech recognition error:", event.error);
+    recognition.onerror = (event: { error?: string }) => {
+      const err = (event as { error?: string })?.error ?? "unknown";
+      console.warn("Speech recognition error:", err, event);
       setIsListening(false);
-      if (event.error === "not-allowed") {
+      if (err === "not-allowed") {
         alert("Microphone access was denied. Please allow microphone access and try again.");
-      } else if (event.error === "no-speech") {
-        // User might have tapped without speaking - don't alert, just stop
       }
+      // no-speech, aborted, etc. - just stop silently
     };
 
     recognition.onend = () => {
       setIsListening(false);
+      const transcript = transcriptRef.current.trim();
+      if (transcript) {
+        sendMessage(transcript);
+      }
     };
 
     recognitionRef.current = recognition;
@@ -296,17 +321,17 @@ export default function ChatInterface() {
   return (
     <div className="flex flex-col min-h-0 flex-1 bg-cream">
       {/* Chat Header */}
-      <div className="p-4 bg-white border-b border-greek-100 flex items-center justify-between">
+      <div className="p-4 bg-white border-b border-santorini-100 flex items-center justify-between">
         <div>
-          <h2 className="font-display font-bold text-greek-800">
+          <h2 className="font-display font-bold text-santorini-800">
             Order Here
           </h2>
-          <p className="text-xs text-greek-500">
+          <p className="text-xs text-santorini-600">
             Chat or speak to place your order
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <span className="text-xs text-greek-500">
+          <span className="text-xs text-santorini-600">
             {isVoiceMode ? "Voice" : "Text"}
           </span>
           <button
@@ -320,7 +345,7 @@ export default function ChatInterface() {
               }
             }}
             className={`relative w-12 h-6 rounded-full transition-colors ${
-              isVoiceMode ? "bg-greek-500" : "bg-greek-200"
+              isVoiceMode ? "bg-santorini-500" : "bg-santorini-200"
             }`}
           >
             <span
@@ -344,14 +369,14 @@ export default function ChatInterface() {
               <div
                 className={`max-w-[80%] rounded-2xl px-4 py-3 ${
                   msg.role === "user"
-                    ? "bg-greek-500 text-white rounded-br-md"
-                    : "bg-white text-greek-800 border border-greek-100 shadow-sm rounded-bl-md"
+                    ? "bg-santorini-500 text-white rounded-br-md"
+                    : "bg-white text-santorini-800 border border-santorini-100 shadow-sm rounded-bl-md"
                 }`}
               >
                 {msg.role === "assistant" && (
                   <div className="flex items-center gap-1.5 mb-1">
                     <span className="text-xs">&#9749;</span>
-                    <span className="text-xs font-medium text-greek-500">
+                    <span className="text-xs font-medium text-santorini-600">
                       Aegean Brew
                     </span>
                   </div>
@@ -361,7 +386,7 @@ export default function ChatInterface() {
                 </p>
                 <span
                   className={`text-[10px] mt-1 block ${
-                    msg.role === "user" ? "text-greek-200" : "text-greek-400"
+                    msg.role === "user" ? "text-santorini-200" : "text-santorini-400"
                   }`}
                 >
                   {new Date(msg.timestamp).toLocaleTimeString([], {
@@ -382,21 +407,21 @@ export default function ChatInterface() {
 
         {isLoading && (
           <div className="flex justify-start">
-            <div className="bg-white rounded-2xl rounded-bl-md px-4 py-3 border border-greek-100 shadow-sm">
+            <div className="bg-white rounded-2xl rounded-bl-md px-4 py-3 border border-santorini-100 shadow-sm">
               <div className="flex items-center gap-1.5 mb-1">
                 <span className="text-xs">&#9749;</span>
-                <span className="text-xs font-medium text-greek-500">
+                <span className="text-xs font-medium text-santorini-600">
                   Aegean Brew
                 </span>
               </div>
               <div className="flex gap-1.5">
-                <span className="w-2 h-2 bg-greek-300 rounded-full animate-bounce" style={{ width: 8, height: 8, minWidth: 8, minHeight: 8 }} />
+                <span className="w-2 h-2 bg-santorini-400 rounded-full animate-bounce" style={{ width: 8, height: 8, minWidth: 8, minHeight: 8 }} />
                 <span
-                  className="w-2 h-2 bg-greek-300 rounded-full animate-bounce"
+                  className="w-2 h-2 bg-santorini-400 rounded-full animate-bounce"
                   style={{ width: 8, height: 8, minWidth: 8, minHeight: 8, animationDelay: "0.15s" }}
                 />
                 <span
-                  className="w-2 h-2 bg-greek-300 rounded-full animate-bounce"
+                  className="w-2 h-2 bg-santorini-400 rounded-full animate-bounce"
                   style={{ width: 8, height: 8, minWidth: 8, minHeight: 8, animationDelay: "0.3s" }}
                 />
               </div>
@@ -407,27 +432,27 @@ export default function ChatInterface() {
       </div>
 
       {/* Input Area */}
-      <div className="p-4 bg-white border-t border-greek-100">
+      <div className="p-4 bg-white border-t border-santorini-100">
         {isVoiceMode ? (
           <div className="flex flex-col items-center gap-3">
             {isSpeaking && (
-              <div className="flex items-center gap-2 text-xs text-greek-500">
+              <div className="flex items-center gap-2 text-xs text-santorini-600">
                 <div className="flex gap-0.5">
-                  <span className="w-1 h-3 bg-greek-400 rounded-full animate-pulse" />
+                  <span className="w-1 h-3 bg-santorini-400 rounded-full animate-pulse" />
                   <span
-                    className="w-1 h-4 bg-greek-500 rounded-full animate-pulse"
+                    className="w-1 h-4 bg-santorini-500 rounded-full animate-pulse"
                     style={{ animationDelay: "0.1s" }}
                   />
                   <span
-                    className="w-1 h-3 bg-greek-400 rounded-full animate-pulse"
+                    className="w-1 h-3 bg-santorini-400 rounded-full animate-pulse"
                     style={{ animationDelay: "0.2s" }}
                   />
                   <span
-                    className="w-1 h-5 bg-greek-500 rounded-full animate-pulse"
+                    className="w-1 h-5 bg-santorini-500 rounded-full animate-pulse"
                     style={{ animationDelay: "0.3s" }}
                   />
                   <span
-                    className="w-1 h-3 bg-greek-400 rounded-full animate-pulse"
+                    className="w-1 h-3 bg-santorini-400 rounded-full animate-pulse"
                     style={{ animationDelay: "0.4s" }}
                   />
                 </div>
@@ -441,8 +466,8 @@ export default function ChatInterface() {
                 isListening
                   ? "bg-red-500 text-white shadow-lg shadow-red-200 scale-110"
                   : isLoading || isSpeaking
-                    ? "bg-greek-200 text-greek-400 cursor-not-allowed"
-                    : "bg-greek-500 text-white shadow-lg shadow-greek-200 hover:bg-greek-600 hover:scale-105"
+                    ? "bg-santorini-200 text-santorini-400 cursor-not-allowed"
+                    : "bg-santorini-500 text-white shadow-lg shadow-santorini-200 hover:bg-santorini-600 hover:scale-105"
               }`}
             >
               {isListening ? (
@@ -473,7 +498,7 @@ export default function ChatInterface() {
                 </svg>
               )}
             </button>
-            <p className="text-xs text-greek-500">
+            <p className="text-xs text-santorini-600">
               {isListening
                 ? "Listening... tap to stop"
                 : isLoading
@@ -486,6 +511,7 @@ export default function ChatInterface() {
         ) : (
           <form onSubmit={handleSubmit} className="flex gap-2">
             <input
+              ref={inputRef}
               type="text"
               value={input}
               onChange={(e) => setInput(e.target.value)}
@@ -499,12 +525,12 @@ export default function ChatInterface() {
               }}
               placeholder="Type your order..."
               disabled={isLoading}
-              className="flex-1 px-4 py-3 rounded-2xl border border-greek-200 focus:outline-none focus:ring-2 focus:ring-greek-400 focus:border-transparent text-sm bg-greek-50/50 placeholder-greek-400 disabled:opacity-50"
+              className="flex-1 px-4 py-3 rounded-2xl border border-santorini-200 focus:outline-none focus:ring-2 focus:ring-santorini-400 focus:border-transparent text-sm bg-santorini-50/50 placeholder-santorini-400 disabled:opacity-50"
             />
             <button
               type="submit"
               disabled={!input.trim() || isLoading}
-              className="px-5 py-3 bg-greek-500 text-white rounded-2xl font-medium text-sm hover:bg-greek-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
+              className="px-5 py-3 bg-santorini-500 text-white rounded-2xl font-medium text-sm hover:bg-santorini-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
             >
               <svg
                 width={20}
