@@ -1,7 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
 import { orderStore } from "@/lib/store";
 import { Order, OrderItem } from "@/lib/types";
+import { getMenuItem } from "@/lib/menu";
 import { v4 as uuidv4 } from "uuid";
+
+function validateOrderItems(items: OrderItem[]): string | null {
+  for (const item of items) {
+    const menuItem = getMenuItem(item.menuItemId);
+    if (!menuItem) return `Unknown item: ${item.menuItemId}`;
+    if (menuItem.isPastry) continue;
+    const milk = (item.milk ?? "whole").toLowerCase();
+    if (!menuItem.hasMilk && milk !== "none") {
+      return `${menuItem.name} cannot have milk. If you'd like milk, suggest a Latte or similar drink instead.`;
+    }
+  }
+  return null;
+}
 
 export async function GET() {
   const orders = orderStore.getAllOrders();
@@ -18,6 +32,11 @@ export async function POST(request: NextRequest) {
         { error: "At least one item is required" },
         { status: 400 }
       );
+    }
+
+    const validationError = validateOrderItems(items as OrderItem[]);
+    if (validationError) {
+      return NextResponse.json({ error: validationError }, { status: 400 });
     }
 
     const totalPrice = items.reduce(

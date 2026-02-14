@@ -10,7 +10,7 @@ interface SpeechRecognitionEvent {
   results: {
     [index: number]: {
       [index: number]: { transcript: string };
-      isFinal: boolean;
+      isFinal?: boolean;
     };
     length: number;
   };
@@ -48,6 +48,7 @@ export default function ChatInterface() {
   const [isLoading, setIsLoading] = useState(false);
   const [isVoiceMode, setIsVoiceMode] = useState(false);
   const [isListening, setIsListening] = useState(false);
+  const [voiceFeedback, setVoiceFeedback] = useState<string | null>(null);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -55,7 +56,8 @@ export default function ChatInterface() {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const audioUnlockedRef = useRef(false);
   const transcriptRef = useRef("");
-  const resultIndexRef = useRef(0);
+  const isVoiceModeRef = useRef(isVoiceMode);
+  isVoiceModeRef.current = isVoiceMode;
 
   // Unlock audio on user gesture - required for TTS to work in modern browsers
   function unlockAudio() {
@@ -111,21 +113,27 @@ export default function ChatInterface() {
   }
 
   // Submit order to API
-  async function submitOrder(orderData: Record<string, unknown>): Promise<Order | null> {
+  async function submitOrder(orderData: Record<string, unknown>): Promise<{ order: Order | null; error?: string }> {
     try {
       const res = await fetch("/api/orders", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(orderData),
       });
-      if (res.ok) {
-        const data = await res.json();
-        return data.order;
-      }
+      const data = await res.json();
+      if (res.ok) return { order: data.order };
+      return { order: null, error: data.error || "Failed to submit order" };
     } catch (err) {
       console.error("Failed to submit order:", err);
+      return { order: null, error: "Failed to submit order" };
     }
-    return null;
+  }
+
+  // Resume listening after barista finishes speaking (voice mode only)
+  function maybeResumeListening() {
+    if (isVoiceModeRef.current && !isLoading) {
+      setTimeout(() => startListening(), 300);
+    }
   }
 
   // Text-to-speech: try Eleven Labs first, fallback to browser voice
@@ -149,10 +157,12 @@ export default function ChatInterface() {
         audio.onended = () => {
           setIsSpeaking(false);
           URL.revokeObjectURL(url);
+          maybeResumeListening();
         };
         audio.onerror = () => {
           setIsSpeaking(false);
           URL.revokeObjectURL(url);
+          maybeResumeListening();
         };
         await audio.play();
       } else {
@@ -167,16 +177,32 @@ export default function ChatInterface() {
     }
   }
 
+  function stopSpeaking() {
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current = null;
+    }
+    if ("speechSynthesis" in window) speechSynthesis.cancel();
+    setIsSpeaking(false);
+  }
+
   function fallbackSpeak(text: string) {
     if (!("speechSynthesis" in window)) {
       setIsSpeaking(false);
+      maybeResumeListening();
       return;
     }
     speechSynthesis.cancel();
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.rate = 0.9;
-    utterance.onend = () => setIsSpeaking(false);
-    utterance.onerror = () => setIsSpeaking(false);
+    utterance.onend = () => {
+      setIsSpeaking(false);
+      maybeResumeListening();
+    };
+    utterance.onerror = () => {
+      setIsSpeaking(false);
+      maybeResumeListening();
+    };
     speechSynthesis.speak(utterance);
   }
 
@@ -219,15 +245,17 @@ export default function ChatInterface() {
       const { cleanText, orderData } = parseOrder(data.message);
 
       let order: Order | undefined;
+      let orderError: string | undefined;
       if (orderData) {
-        const submitted = await submitOrder(orderData);
+        const { order: submitted, error } = await submitOrder(orderData);
         if (submitted) order = submitted;
+        else if (error) orderError = error;
       }
 
       const assistantMessage: ChatMessage = {
         id: uuidv4(),
         role: "assistant",
-        content: cleanText,
+        content: orderError ? `${cleanText}\n\n⚠️ ${orderError}` : cleanText,
         timestamp: new Date().toISOString(),
         order,
       };
@@ -235,8 +263,14 @@ export default function ChatInterface() {
       setMessages((prev) => [...prev, assistantMessage]);
 
       // Speak the response if in voice mode
-      if (isVoiceMode && cleanText) {
-        speakText(cleanText);
+      if (isVoiceMode) {
+        if (orderError) {
+          speakText(`Sorry, ${orderError}`);
+        } else if (cleanText) {
+          speakText(cleanText);
+        } else {
+          maybeResumeListening();
+        }
       }
     } catch (err) {
       console.error("Chat error:", err);
@@ -268,7 +302,6 @@ export default function ChatInterface() {
     }
 
     transcriptRef.current = "";
-    resultIndexRef.current = 0;
 
     const recognition = new SpeechRecognition();
     recognition.continuous = true;
@@ -276,11 +309,12 @@ export default function ChatInterface() {
     recognition.lang = "en-US";
 
     recognition.onresult = (event: SpeechRecognitionEvent) => {
-      for (let i = resultIndexRef.current; i < event.results.length; i++) {
-        const transcript = event.results[i]?.[0]?.transcript ?? "";
-        if (transcript) transcriptRef.current += transcript;
-        resultIndexRef.current = i + 1;
+      let full = "";
+      for (let i = 0; i < event.results.length; i++) {
+        const t = event.results[i]?.[0]?.transcript ?? "";
+        if (t) full += t;
       }
+      transcriptRef.current = full;
     };
 
     recognition.onerror = (event: { error?: string }) => {
@@ -296,14 +330,20 @@ export default function ChatInterface() {
     recognition.onend = () => {
       setIsListening(false);
       const transcript = transcriptRef.current.trim();
+      console.log("[Voice] Recognition ended, transcript:", transcript || "(empty)");
       if (transcript) {
         sendMessage(transcript);
+        setVoiceFeedback(null);
+      } else {
+        setVoiceFeedback("No speech detected. Check your microphone and try again.");
+        setTimeout(() => setVoiceFeedback(null), 4000);
       }
     };
 
     recognitionRef.current = recognition;
     recognition.start();
     setIsListening(true);
+    console.log("[Voice] Listening started");
   }
 
   function stopListening() {
@@ -460,12 +500,18 @@ export default function ChatInterface() {
               </div>
             )}
             <button
-              onClick={isListening ? stopListening : startListening}
-              disabled={isLoading || isSpeaking}
+              onClick={() => {
+                if (isListening) stopListening();
+                else if (isSpeaking) {
+                  stopSpeaking();
+                  startListening();
+                } else startListening();
+              }}
+              disabled={isLoading}
               className={`w-16 h-16 rounded-full flex items-center justify-center transition-all ${
                 isListening
                   ? "bg-red-500 text-white shadow-lg shadow-red-200 scale-110"
-                  : isLoading || isSpeaking
+                  : isLoading
                     ? "bg-santorini-200 text-santorini-400 cursor-not-allowed"
                     : "bg-santorini-500 text-white shadow-lg shadow-santorini-200 hover:bg-santorini-600 hover:scale-105"
               }`}
@@ -504,9 +550,12 @@ export default function ChatInterface() {
                 : isLoading
                   ? "Processing..."
                   : isSpeaking
-                    ? "Playing response..."
+                    ? "Tap to interrupt and speak"
                     : "Tap to speak your order"}
             </p>
+            {voiceFeedback && (
+              <p className="text-xs text-amber-600 animate-pulse">{voiceFeedback}</p>
+            )}
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="flex gap-2">
